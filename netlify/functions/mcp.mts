@@ -8,6 +8,8 @@ import {
     JSONRPCError
 } from "@modelcontextprotocol/sdk/types.js";
 
+const HOUSEKEEP_API_BASE = "https://housekeep.com/api/v1"
+
 export default async (req: Request) => {
 
     try {
@@ -62,9 +64,43 @@ export default async (req: Request) => {
 };
 
 function getServer(): McpServer {
-    // Implemented later in this guide...
-    return;
-};
+    const server = new McpServer(
+        {
+            name: "housekeep-mcp-server",
+            version: "1.0.0",
+        },
+        { capabilities: { logging: {} } }
+    );
+
+    server.resource(
+        "getTradesServicesSummary",
+            "housekeep://trades-services-summary",
+        { mimeType: "text/plain" },
+        async (req): Promise<ReadResourceResult> => {
+            const response = await fetch(`${HOUSEKEEP_API_BASE}/work/tradespeople/v3/`);
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch trades services summary: ${response.statusText}`);
+            }
+
+            const data = await response.json()
+            const text = data.sub_items
+                .map(subItem => `Name: ${subItem.name}\nString identifier: ${subItem.string_identifier}`)
+                .join('\n---\n')
+
+            return {
+                contents: [
+                    {
+                        uri: "housekeep://trades-services-summary",
+                        text,
+                    },
+                ],
+            };
+        }
+    )
+
+    return server;
+}
 
 // Ensure this function responds to the <domain>/mcp path
 // This can be any path you want but you'll need to ensure the
